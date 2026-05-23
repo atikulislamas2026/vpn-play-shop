@@ -385,3 +385,274 @@ window.addEventListener("popstate", function () {
 window.addEventListener("load", function () {
   loadApps();
 });
+
+
+/* ================= PREMIUM SEARCH RESULT SYSTEM ================= */
+
+function runSearch(searchValue) {
+  searchValue = searchValue.toLowerCase().trim();
+
+  if (!searchValue) {
+    showDefaultHome();
+    return;
+  }
+
+  const matchedApps = apps
+    .map(function (app) {
+      return {
+        app: app,
+        score: getSearchScore(app, searchValue)
+      };
+    })
+    .filter(function (item) {
+      return item.score > 0;
+    })
+    .sort(function (a, b) {
+      return b.score - a.score;
+    })
+    .map(function (item) {
+      return item.app;
+    });
+
+  showSearchResults(searchValue, matchedApps);
+}
+
+function getSearchScore(app, searchValue) {
+  const name = app.name.toLowerCase();
+  const category = app.category.toLowerCase();
+  const subtitle = app.subtitle.toLowerCase();
+  const description = app.description.toLowerCase();
+  const slug = app.slug.toLowerCase();
+
+  let score = 0;
+
+  if (name === searchValue) score += 100;
+  if (name.startsWith(searchValue)) score += 80;
+  if (name.includes(searchValue)) score += 60;
+  if (slug.includes(searchValue)) score += 45;
+  if (category.includes(searchValue)) score += 35;
+  if (subtitle.includes(searchValue)) score += 25;
+  if (description.includes(searchValue)) score += 10;
+
+  const words = searchValue.split(" ");
+
+  words.forEach(function (word) {
+    if (word.length < 2) return;
+
+    if (name.includes(word)) score += 15;
+    if (category.includes(word)) score += 8;
+    if (subtitle.includes(word)) score += 6;
+    if (description.includes(word)) score += 3;
+  });
+
+  return score;
+}
+
+function showSearchResults(searchValue, matchedApps) {
+  const heroSection = document.getElementById("heroSection");
+  const searchResultsSection = document.getElementById("searchResultsSection");
+  const topSearchResult = document.getElementById("topSearchResult");
+  const moreSearchResults = document.getElementById("moreSearchResults");
+  const searchTitle = document.getElementById("searchTitle");
+  const searchSubtitle = document.getElementById("searchSubtitle");
+  const moreResultsTitle = document.getElementById("moreResultsTitle");
+
+  if (heroSection) {
+    heroSection.style.display = "none";
+  }
+
+  if (searchResultsSection) {
+    searchResultsSection.classList.add("active");
+  }
+
+  searchTitle.innerText = 'Search results for "' + searchValue + '"';
+  searchSubtitle.innerText = matchedApps.length + " app found";
+
+  topSearchResult.innerHTML = "";
+  moreSearchResults.innerHTML = "";
+
+  if (matchedApps.length === 0) {
+    moreResultsTitle.style.display = "none";
+
+    topSearchResult.innerHTML =
+      '<div class="no-search-result">' +
+      "<h3>No app found</h3>" +
+      "<p>Try searching another VPN or app name.</p>" +
+      "</div>";
+
+    scrollToSearchSection();
+    return;
+  }
+
+  const bestApp = matchedApps[0];
+  const otherApps = matchedApps.slice(1);
+
+  topSearchResult.innerHTML =
+    '<div class="top-search-card">' +
+    '<img src="' + bestApp.icon + '" alt="' + bestApp.name + '">' +
+    '<div class="top-search-info">' +
+    "<h3>" + bestApp.name + "</h3>" +
+    "<p>" + bestApp.description + "</p>" +
+    '<div class="top-search-meta">' +
+    "<span>" + bestApp.category + "</span>" +
+    "<span>" + bestApp.rating + " ★</span>" +
+    "<span>" + bestApp.size + "</span>" +
+    "<span>" + bestApp.downloads + "</span>" +
+    "</div>" +
+    "</div>" +
+    '<div class="top-search-actions">' +
+    '<button onclick="openAppBySlug(\'' + bestApp.slug + '\')">View / Download</button>' +
+    "</div>" +
+    "</div>";
+
+  if (otherApps.length === 0) {
+    moreResultsTitle.style.display = "none";
+  } else {
+    moreResultsTitle.style.display = "block";
+  }
+
+  otherApps.forEach(function (app) {
+    const item = document.createElement("div");
+    item.className = "search-list-item";
+
+    item.innerHTML =
+      '<img src="' + app.icon + '" alt="' + app.name + '">' +
+      '<div class="search-list-info">' +
+      "<h3>" + app.name + "</h3>" +
+      "<p>" + app.subtitle + "</p>" +
+      '<div class="search-list-meta">' +
+      "<span>" + app.category + "</span>" +
+      "<span>" + app.rating + " ★</span>" +
+      "<span>" + app.size + "</span>" +
+      "<span>" + app.downloads + "</span>" +
+      "</div>" +
+      "</div>" +
+      '<button class="search-list-btn" onclick="openAppBySlug(\'' + app.slug + '\')">View</button>';
+
+    moreSearchResults.appendChild(item);
+  });
+
+  scrollToSearchSection();
+}
+
+function openAppBySlug(slug) {
+  const app = apps.find(function (item) {
+    return item.slug === slug;
+  });
+
+  if (app) {
+    openAppModal(app);
+  }
+}
+
+function showDefaultHome() {
+  const heroSection = document.getElementById("heroSection");
+  const searchResultsSection = document.getElementById("searchResultsSection");
+
+  if (heroSection) {
+    heroSection.style.display = "";
+  }
+
+  if (searchResultsSection) {
+    searchResultsSection.classList.remove("active");
+  }
+
+  const cards = document.querySelectorAll(".app-card");
+
+  cards.forEach(function (card) {
+    card.classList.remove("hidden");
+  });
+}
+
+function clearSearchResults() {
+  const desktopInput = document.getElementById("searchInput");
+  const mobileInput = document.getElementById("mobileSearchInput");
+
+  if (desktopInput) {
+    desktopInput.value = "";
+  }
+
+  if (mobileInput) {
+    mobileInput.value = "";
+  }
+
+  showDefaultHome();
+}
+
+function scrollToSearchSection() {
+  const searchResultsSection = document.getElementById("searchResultsSection");
+
+  if (searchResultsSection) {
+    searchResultsSection.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  }
+}
+
+
+
+
+/* ================= SHARE CURRENT APP ================= */
+
+function shareCurrentApp() {
+  if (!currentAppSlug) {
+    alert("App link not found.");
+    return;
+  }
+
+  const app = apps.find(function (item) {
+    return item.slug === currentAppSlug;
+  });
+
+  if (!app) {
+    alert("App data not found.");
+    return;
+  }
+
+  const appLink = window.location.origin + window.location.pathname + "?app=" + app.slug;
+
+  const shareTitle = app.name;
+  const shareText =
+    app.name +
+    " - Download Android VPN APK from ATK VPN Shop.\n\n" +
+    "Version: " + app.version + "\n" +
+    "Size: " + app.size + "\n" +
+    "Rating: " + app.rating + "★\n\n" +
+    "Download Link:";
+
+  if (navigator.share) {
+    navigator.share({
+      title: shareTitle,
+      text: shareText,
+      url: appLink
+    }).catch(function () {
+      copyAppLink(appLink);
+    });
+  } else {
+    copyAppLink(appLink);
+  }
+}
+
+function copyAppLink(appLink) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(appLink).then(function () {
+      alert("App link copied:\n" + appLink);
+    }).catch(function () {
+      fallbackCopyText(appLink);
+    });
+  } else {
+    fallbackCopyText(appLink);
+  }
+}
+
+function fallbackCopyText(text) {
+  const input = document.createElement("input");
+  input.value = text;
+  document.body.appendChild(input);
+  input.select();
+  document.execCommand("copy");
+  document.body.removeChild(input);
+
+  alert("App link copied:\n" + text);
+}
